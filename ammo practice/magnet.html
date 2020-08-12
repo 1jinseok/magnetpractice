@@ -43,7 +43,10 @@
                 createBlock();
                 createKinematicBox();
                 createBall();
-                createMagnetBall();
+                createPositiveMagnetBall(20, 20);
+                createPositiveMagnetBall(-20, -20);
+                createNegativeMagnetBall(20, -20);
+                createNegativeMagnetBall(-20, 20);
 
                 setupEventHandlers();
                 renderFrame();
@@ -317,9 +320,9 @@
                 metallic.push(ball)
             }
 
-            function createMagnetBall(){
+            function createPositiveMagnetBall( xPos, zPos){
                 
-                let pos = {x: 20, y: 4, z: 20};
+                let pos = {x: xPos, y: 4, z: zPos};
                 let radius = 2;
                 let quat = {x: 0, y: 0, z: 0, w: 1};
                 let mass = 1;
@@ -361,7 +364,54 @@
                 ball.userData.physicsBody = body;
                 rigidBodies.push(ball);
                 magnet.push(ball);
-                //body.setLinearVelocity(new Ammo.btVector3(1,2,3));
+                positiveMagnet.push(ball);
+            }
+
+            function createNegativeMagnetBall( xPos, zPos ){
+                
+                let pos = {x: xPos, y: 4, z: zPos};
+                let radius = 2;
+                let quat = {x: 0, y: 0, z: 0, w: 1};
+                let mass = 1;
+
+                //threeJS Section
+                let ball = new THREE.Mesh(new THREE.SphereBufferGeometry(radius), new THREE.MeshPhongMaterial({color: 0x0505ff}));
+
+                ball.position.set(pos.x, pos.y, pos.z);
+                
+                ball.castShadow = true;
+                ball.receiveShadow = true;
+
+                scene.add(ball);
+
+
+                //Ammojs Section
+                let transform = new Ammo.btTransform();
+                transform.setIdentity();
+                transform.setOrigin( new Ammo.btVector3( pos.x, pos.y, pos.z ) );
+                transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
+                let motionState = new Ammo.btDefaultMotionState( transform );
+
+                let colShape = new Ammo.btSphereShape( radius );
+                colShape.setMargin( 0.05 );
+
+                let localInertia = new Ammo.btVector3( 0, 0, 0 );
+                colShape.calculateLocalInertia( mass, localInertia );
+
+                let rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, colShape, localInertia );
+                let body = new Ammo.btRigidBody( rbInfo );
+
+                body.setFriction(3);
+                body.setRollingFriction(3);
+                body.setActivationState( STATE.DISABLE_DEACTIVATION );
+
+
+                physicsWorld.addRigidBody( body );
+
+                ball.userData.physicsBody = body;
+                rigidBodies.push(ball);
+                magnet.push(ball);
+                negativeMagnet.push(ball);
             }
 
             function createKinematicBox(){
@@ -468,37 +518,16 @@
 
             }
 
-            function applyMagnetVelocity( curbody ){
+            function updateBodyMagnet( curbody ){
 
                 for ( let i = 0; i < magnet.length; i++) {
-                    // let curmagnet = magnet[ i ];
-                    // let bodyToMag = new Ammo.btVector3((curmagnet.position.x - curbody.position.x),
-                    // (curmagnet.position.y - curbody.position.y),
-                    // (curmagnet.position.z - curbody.position.z));
-                    // let distance = bodyToMag.length();
-                    // if (distance == 0) {
-                    //     continue;
-                    // }
-                    // bodyToMag.op_mul(1/bodyToMag.length());
-                    // let vel = curbody.userData.physicsBody.getLinearVelocity();
-                    // let magVel = curmagnet.userData.physicsBody.getLinearVelocity();
-                    // let magnitude = 100 / distance / distance;
-                    // console.log(distance);
-                    // let newvel = new Ammo.btVector3( vel.x() + bodyToMag.x() * -1 * magnitude,
-                    //  vel.y() + bodyToMag.y() * -1 * magnitude,
-                    //   vel.z() + bodyToMag.z() * -1 * magnitude );
-                    // let newMagVel = new Ammo.btVector3( magVel.x() + bodyToMag.x() * magnitude,
-                    //  magVel.y() + bodyToMag.y() * magnitude,
-                    //   magVel.z() + bodyToMag.z() * magnitude );
-                    // curbody.userData.physicsBody.setLinearVelocity(newvel);
-                    // curmagnet.userData.physicsBody.setLinearVelocity(newMagVel);
-                    bodyToMagnet(curbody, magnet[i], -1);
+                    applyMagnetic(curbody, magnet[i], -1);
                 }
             }
 
 
-            //1 is attraction in direction
-            function bodyToMagnet(curbody, curmagnet, dir) {
+            //-1 is attraction, 1 is repulsion
+            function applyMagnetic(curbody, curmagnet, dir) {
                 let bodyToMag = new Ammo.btVector3((curmagnet.position.x - curbody.position.x),
                 (curmagnet.position.y - curbody.position.y),
                 (curmagnet.position.z - curbody.position.z));
@@ -510,7 +539,6 @@
                 let vel = curbody.userData.physicsBody.getLinearVelocity();
                 let magVel = curmagnet.userData.physicsBody.getLinearVelocity();
                 let magnitude = 100 / distance / distance;
-                console.log(distance);
                 let newvel = new Ammo.btVector3( vel.x() + bodyToMag.x() * -dir * magnitude,
                     vel.y() + bodyToMag.y() * -dir * magnitude,
                     vel.z() + bodyToMag.z() * -dir * magnitude );
@@ -521,28 +549,47 @@
                 curmagnet.userData.physicsBody.setLinearVelocity(newMagVel);
             }
 
-            // function applyInterMagnetic() {
+            function updateInterMagnetic() {
 
-            //     for ( let i = 0; i < magnet.length; i++) {
-                    
-            //     }
-            // }
+                for ( let i = 0; i < positiveMagnet.length; i++) {
+                    for ( let j = 0; j < positiveMagnet.length; j++) {
+                        if (i == j) {
+                            continue;
+                        }
+                        console.log("pospos");
+                        applyMagnetic(positiveMagnet[i], positiveMagnet[j], 1);
+                    }
+                    for ( let j = 0; j < negativeMagnet.length; j++) {
+                        console.log("posneg");
+                        applyMagnetic(positiveMagnet[i], negativeMagnet[j], -1);
+                    }
+                }
+                for ( let i = 0; i < negativeMagnet.length; i++) {
+                    for ( let j = 0; j < negativeMagnet.length; j++) {
+                        if (i == j) {
+                            continue;
+                        }
+                        console.log("negneg");
+                        applyMagnetic(negativeMagnet[i], negativeMagnet[j], 1);
+                    }
+                }
+            }
 
 
             function updatePhysics( deltaTime ){
 
                 // Step world
                 physicsWorld.stepSimulation( deltaTime, 10 );
-                // for ( let i = 0; i < metallic.length; i++ ){
-                //     applyMagnetVelocity(metallic[ i ]);
-                // }
+                for ( let i = 0; i < metallic.length; i++ ){
+                    updateBodyMagnet(metallic[ i ]);
+                }
+                updateInterMagnetic();
 
                 // Update rigid bodies
                 for ( let i = 0; i < rigidBodies.length; i++ ) {
                     let objThree = rigidBodies[ i ];
                     let objAmmo = objThree.userData.physicsBody;
                     let ms = objAmmo.getMotionState();
-                    applyMagnetVelocity(objThree);
                     if ( ms ) {
 
                         ms.getWorldTransform( tmpTrans );
