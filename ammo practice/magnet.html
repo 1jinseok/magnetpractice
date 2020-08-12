@@ -304,8 +304,8 @@
                 let rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, colShape, localInertia );
                 let body = new Ammo.btRigidBody( rbInfo );
 
-                body.setFriction(1);
-                body.setRollingFriction(1);
+                body.setFriction(3);
+                body.setRollingFriction(3);
                 body.setActivationState( STATE.DISABLE_DEACTIVATION );
                 body.setLinearVelocity(new Ammo.btVector3(0,20,0));
 
@@ -351,8 +351,8 @@
                 let rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, colShape, localInertia );
                 let body = new Ammo.btRigidBody( rbInfo );
 
-                body.setFriction(1);
-                body.setRollingFriction(1);
+                body.setFriction(3);
+                body.setRollingFriction(3);
                 body.setActivationState( STATE.DISABLE_DEACTIVATION );
 
 
@@ -471,28 +471,54 @@
             function applyMagnetVelocity( curbody ){
 
                 for ( let i = 0; i < magnet.length; i++) {
-                    let curmagnet = magnet[ i ];
-                    let bodyToMag = new Ammo.btVector3((curmagnet.position.x - curbody.position.x),
-                    (curmagnet.position.y - curbody.position.y),
-                    (curmagnet.position.z - curbody.position.z));
-                    let distance = bodyToMag.length();
-                    if (distance == 0) {
-                        continue;
-                    }
-                    bodyToMag.op_mul(1/bodyToMag.length());
-                    let vel = curbody.userData.physicsBody.getLinearVelocity();
-                    let magVel = curmagnet.userData.physicsBody.getLinearVelocity();
-                    let magnitude = 100 / distance / distance;
-                    console.log(distance);
-                    let newvel = new Ammo.btVector3( vel.x() + bodyToMag.x() * -1 * magnitude,
-                     vel.y() + bodyToMag.y() * -1 * magnitude,
-                      vel.z() + bodyToMag.z() * -1 * magnitude );
-                    let newMagVel = new Ammo.btVector3( magVel.x() + bodyToMag.x() * magnitude,
-                     magVel.y() + bodyToMag.y() * magnitude,
-                      magVel.z() + bodyToMag.z() * magnitude );
-                    curbody.userData.physicsBody.setLinearVelocity(newvel);
-                    curmagnet.userData.physicsBody.setLinearVelocity(newMagVel);
+                    // let curmagnet = magnet[ i ];
+                    // let bodyToMag = new Ammo.btVector3((curmagnet.position.x - curbody.position.x),
+                    // (curmagnet.position.y - curbody.position.y),
+                    // (curmagnet.position.z - curbody.position.z));
+                    // let distance = bodyToMag.length();
+                    // if (distance == 0) {
+                    //     continue;
+                    // }
+                    // bodyToMag.op_mul(1/bodyToMag.length());
+                    // let vel = curbody.userData.physicsBody.getLinearVelocity();
+                    // let magVel = curmagnet.userData.physicsBody.getLinearVelocity();
+                    // let magnitude = 100 / distance / distance;
+                    // console.log(distance);
+                    // let newvel = new Ammo.btVector3( vel.x() + bodyToMag.x() * -1 * magnitude,
+                    //  vel.y() + bodyToMag.y() * -1 * magnitude,
+                    //   vel.z() + bodyToMag.z() * -1 * magnitude );
+                    // let newMagVel = new Ammo.btVector3( magVel.x() + bodyToMag.x() * magnitude,
+                    //  magVel.y() + bodyToMag.y() * magnitude,
+                    //   magVel.z() + bodyToMag.z() * magnitude );
+                    // curbody.userData.physicsBody.setLinearVelocity(newvel);
+                    // curmagnet.userData.physicsBody.setLinearVelocity(newMagVel);
+                    bodyToMagnet(curbody, magnet[i], -1);
                 }
+            }
+
+
+            //1 is attraction in direction
+            function bodyToMagnet(curbody, curmagnet, dir) {
+                let bodyToMag = new Ammo.btVector3((curmagnet.position.x - curbody.position.x),
+                (curmagnet.position.y - curbody.position.y),
+                (curmagnet.position.z - curbody.position.z));
+                let distance = bodyToMag.length();
+                if (distance == 0) {
+                    return;
+                }
+                bodyToMag.op_mul(1/bodyToMag.length());
+                let vel = curbody.userData.physicsBody.getLinearVelocity();
+                let magVel = curmagnet.userData.physicsBody.getLinearVelocity();
+                let magnitude = 100 / distance / distance;
+                console.log(distance);
+                let newvel = new Ammo.btVector3( vel.x() + bodyToMag.x() * -dir * magnitude,
+                    vel.y() + bodyToMag.y() * -dir * magnitude,
+                    vel.z() + bodyToMag.z() * -dir * magnitude );
+                let newMagVel = new Ammo.btVector3( magVel.x() + bodyToMag.x() * dir * magnitude,
+                    magVel.y() + bodyToMag.y() * dir * magnitude,
+                    magVel.z() + bodyToMag.z() * dir * magnitude );
+                curbody.userData.physicsBody.setLinearVelocity(newvel);
+                curmagnet.userData.physicsBody.setLinearVelocity(newMagVel);
             }
 
             // function applyInterMagnetic() {
